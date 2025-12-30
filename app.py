@@ -5,7 +5,7 @@ import base64
 import json
 from fastapi import HTTPException
 import db_util 
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 app = FastAPI()
 # Load OCI config from ~/.oci/config
@@ -56,7 +56,13 @@ async def extract(file: UploadFile = File(...)):
         ]
     )
     try:
+        start_time = time.time()   # זמן התחלה
         response = doc_client.analyze_document(request)
+        end_time = time.time()     # זמן סיום
+        prediction_time = end_time - start_time
+        print(f"Time taken: {prediction_time:.2f} seconds")
+
+
     except Exception as e:
         raise HTTPException(
             status_code=503,
@@ -131,7 +137,8 @@ async def extract(file: UploadFile = File(...)):
     result = {
         "confidence": confid,
         "data": data,
-        "dataConfidence": data_Confidence
+        "dataConfidence": data_Confidence,
+        "predictionTime": prediction_time  # add the prediction time to the response
     }   
     # Save the extracted invoice data and confidence information to the database    
     db_util.save_inv_extraction(result)
