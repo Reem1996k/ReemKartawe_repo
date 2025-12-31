@@ -64,6 +64,7 @@ async def extract(file: UploadFile = File(...)):
 
 
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=503,
             detail={
