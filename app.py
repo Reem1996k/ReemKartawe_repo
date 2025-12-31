@@ -5,7 +5,8 @@ import base64
 import json
 from fastapi import HTTPException
 import db_util 
-from datetime import datetime, time, timezone
+from datetime import datetime, timezone
+import time
 
 app = FastAPI()
 # Load OCI config from ~/.oci/config
