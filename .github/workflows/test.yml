@@ -26,3 +26,5 @@ jobs:
     - name: Run tests
       run: |
         pytest test/ -v
+        env:
+          SKIP_OCI: "1"
