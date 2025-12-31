@@ -196,15 +196,31 @@ def getInvoiceByVendorName(vendor_name):
     Converts a date string to ISO 8601 format with UTC timezone.
     Returns empty string if conversion fails.
 """
+from datetime import datetime, timezone
+
 def format_date_to_iso(date_text):
     if not date_text:
         return ""
-    try:
-        dt = datetime.strptime(date_text.strip(), "%b %d %Y")
-        return  dt.replace(tzinfo=timezone.utc).isoformat()
 
+    date_text = str(date_text).strip()
+
+    # 1) If already ISO with timezone (e.g. 2012-03-06T00:00:00+00:00 or ...Z)
+    if "T" in date_text and (date_text.endswith("Z") or "+" in date_text or "-" in date_text[19:]):
+        try:
+            dt = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.isoformat()
+        except ValueError:
+            pass
+
+    # 2) OCR format: "March 6, 2012"
+    try:
+        dt = datetime.strptime(date_text, "%B %d, %Y")
+        return dt.replace(tzinfo=timezone.utc).isoformat()
     except ValueError:
         return ""
+
 """
     Removes currency symbols and formatting from amount strings.
     Returns float or empty string if invalid.
