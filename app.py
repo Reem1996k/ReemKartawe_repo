@@ -93,7 +93,7 @@ async def extract(file: UploadFile = File(...)):
                 if field_key == "InvoiceDate":
                     field_value = format_date_to_iso(field_value)
                 if field_key in ("InvoiceTotal", "SubTotal", "ShippingCost", "Amount", "UnitPrice","AmountDue"):
-                    field_value = clean_amount(field_value)
+                    field_value = clean_amount(field_key,field_value)
                 # Extract the confidence score for the field label,
                 # or default to 0.0 if confidence is not available
                 field_confidence = myfield.field_label.confidence if myfield.field_label and myfield.field_label.confidence is not None else 0.0
@@ -112,7 +112,7 @@ async def extract(file: UploadFile = File(...)):
                             # Extract the field value text if available, otherwise use an empty string
                             item_value = j.field_value.text if j.field_value and j.field_value.text else ""
                             if item_key in ("Quantity", "UnitPrice", "Amount"):
-                                item_value = clean_amount(item_value)
+                                item_value = clean_amount(item_key,item_value)
                             # Store the extracted key-value pair in the current item dictionary
                             item[item_key]=item_value
                         # Append the completed item to the list of all extracted items
@@ -209,10 +209,15 @@ def format_date_to_iso(date_text):
     Removes currency symbols and formatting from amount strings.
     Returns float or empty string if invalid.
 """  
-def clean_amount(value):
+def clean_amount(key,value):
+
     if not value:
         return ""
     try:
+        if key == "Quantity":
+            return int(
+            value.replace("$", "").replace(",", "").strip()
+        )
         return float(
             value.replace("$", "").replace(",", "").strip()
         )
