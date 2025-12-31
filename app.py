@@ -9,25 +9,9 @@ from datetime import datetime, time, timezone
 
 app = FastAPI()
 # Load OCI config from ~/.oci/config
+config = oci.config.from_file()
+doc_client = oci.ai_document.AIServiceDocumentClient(config)
 
-
-def get_oci_config():
-    """
-    Load OCI config only when needed.
-    In CI/tests set SKIP_OCI=1 to skip loading ~/.oci/config.
-    """
-    if os.getenv("SKIP_OCI") == "1":
-        return None
-    return oci.config.from_file()
-
-def get_document_client():
-    cfg = get_oci_config()
-    if cfg is None:
-        return None
-    return oci.ai_document.AIServiceDocumentClient(cfg)
-client = get_document_client()
-if client is None:
-    raise HTTPException(status_code=500, detail="OCI is disabled in this environment.")
 """
     Receives an uploaded file and processes it for data extraction.
     This endpoint accepts a file via an HTTP POST request (multipart/form-data).
