@@ -156,26 +156,19 @@ class TestYourFeature(unittest.TestCase):
             response.json(),
             {"detail": {"error": "The service is currently unavailable. Please try again later."}}
         )
+    # -------------------- FAILURE: not pdf format -> 400 --------------------
+    def test_extract_invalid_file_type_returns_400(self):
+        # Not a PDF: wrong content-type and wrong extension
+        bad_bytes = b"not a pdf"
+        files = {"file": ("test.txt", bad_bytes, "text/plain")}
 
-    # -------------------- FAILURE: DB save fails -> 503 --------------------
-    """
-    @patch("app.db_util.save_inv_extraction")
-    @patch("app.doc_client")
-    def test_extract_failure_db_save(self, mock_doc_client, mock_save):
-        fake_response = build_fake_oci_response(doc_type_confidence=0.95, include_document_fields=True)
-        mock_doc_client.analyze_document.return_value = fake_response
+        response = self.client.post("/extract", files=files)
 
-        mock_save.side_effect = Exception("DB error")
-
-        response = self.client.post("/extract", files=self.files)
-
-        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json(),
-            {"detail": {"error": "The service is currently unavailable. Please try again later."}}
-        )
-        """
-
+            {"detail": "Invalid document. Please upload a valid PDF invoice with high confidence."}
+    )
     # -------------------- EDGE CASE: empty fields -> 200 with empty data --------------------
     @patch("app.doc_client")
     def test_extract_empty_document_fields_returns_empty_data(self, mock_doc_client):
