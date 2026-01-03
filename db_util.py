@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
-import app
+
 
 
 DB_PATH = "invoices.db"
