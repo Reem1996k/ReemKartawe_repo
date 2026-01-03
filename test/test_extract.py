@@ -167,6 +167,7 @@ class TestInvoiceExtraction(unittest.TestCase):
         }
         
         # Validate response structure and values
+        
         self.assertEqual(result["data"], expected_data)
         
         print("✓ All assertions passed!")

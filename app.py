@@ -5,29 +5,14 @@ import base64
 import json
 from fastapi import HTTPException
 import db_util 
-from datetime import datetime, time, timezone
+from datetime import date, datetime, timezone
+import time
 
 app = FastAPI()
 # Load OCI config from ~/.oci/config
+config = oci.config.from_file()
+doc_client = oci.ai_document.AIServiceDocumentClient(config)
 
-
-def get_oci_config():
-    """
-    Load OCI config only when needed.
-    In CI/tests set SKIP_OCI=1 to skip loading ~/.oci/config.
-    """
-    if os.getenv("SKIP_OCI") == "1":
-        return None
-    return oci.config.from_file()
-
-def get_document_client():
-    cfg = get_oci_config()
-    if cfg is None:
-        return None
-    return oci.ai_document.AIServiceDocumentClient(cfg)
-client = get_document_client()
-if client is None:
-    raise HTTPException(status_code=500, detail="OCI is disabled in this environment.")
 """
     Receives an uploaded file and processes it for data extraction.
     This endpoint accepts a file via an HTTP POST request (multipart/form-data).
@@ -107,7 +92,7 @@ async def extract(file: UploadFile = File(...)):
                 if field_key == "InvoiceDate":
                     field_value = format_date_to_iso(field_value)
                 if field_key in ("InvoiceTotal", "SubTotal", "ShippingCost", "Amount", "UnitPrice","AmountDue"):
-                    field_value = clean_amount(field_value)
+                    field_value = clean_amount(field_key,field_value)
                 # Extract the confidence score for the field label,
                 # or default to 0.0 if confidence is not available
                 field_confidence = myfield.field_label.confidence if myfield.field_label and myfield.field_label.confidence is not None else 0.0
@@ -126,7 +111,7 @@ async def extract(file: UploadFile = File(...)):
                             # Extract the field value text if available, otherwise use an empty string
                             item_value = j.field_value.text if j.field_value and j.field_value.text else ""
                             if item_key in ("Quantity", "UnitPrice", "Amount"):
-                                item_value = clean_amount(item_value)
+                                item_value = clean_amount(item_key,item_value)
                             # Store the extracted key-value pair in the current item dictionary
                             item[item_key]=item_value
                         # Append the completed item to the list of all extracted items
@@ -138,6 +123,7 @@ async def extract(file: UploadFile = File(...)):
                 # Store the confidence score associated with this field under the same key
                 data_Confidence[field_key]=field_confidence
     # Check if OCI returned detected document types (field is optional)
+    confid = 0.0
     if response.data.detected_document_types:
         # Iterate over detected document types
         for validCon in response.data.detected_document_types:
@@ -156,7 +142,14 @@ async def extract(file: UploadFile = File(...)):
         "dataConfidence": data_Confidence,
         "predictionTime": prediction_time  # add the prediction time to the response
     }   
-    # Save the extracted invoice data and confidence information to the database    
+    # Save the extracted invoice data and confidence information to the database  
+    """try:
+        db_util.save_inv_extraction(result)
+        except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save extraction result"
+    )"""
     db_util.save_inv_extraction(result)
     # Return the final result as the API response
     return result
@@ -210,23 +203,72 @@ def getInvoiceByVendorName(vendor_name):
     Converts a date string to ISO 8601 format with UTC timezone.
     Returns empty string if conversion fails.
 """
-def format_date_to_iso(date_text):
-    if not date_text:
-        return ""
-    try:
-        dt = datetime.strptime(date_text.strip(), "%b %d %Y")
-        return  dt.replace(tzinfo=timezone.utc).isoformat()
+from datetime import datetime, timezone
 
-    except ValueError:
+def format_date_to_iso(date_text):
+    if date_text is None:
         return ""
+
+    # If already a datetime/date object
+    if isinstance(date_text, datetime):
+        dt = date_text
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    if isinstance(date_text, date) and not isinstance(date_text, datetime):
+        dt = datetime(date_text.year, date_text.month, date_text.day, tzinfo=timezone.utc)
+        return dt.isoformat()
+
+    s = str(date_text).strip()
+    if not s:
+        return ""
+
+    # Already ISO (with timezone or Z)
+    try:
+        if "T" in s:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+    except ValueError:
+        pass
+
+    # Try multiple common formats
+    fmts = [
+        "%B %d %Y",   # March 6, 2012
+        "%b %d %Y",   # Mar 6, 2012
+        "%m/%d/%Y",    # 03/06/2012
+        "%m/%d/%y",    # 03/06/12
+        "%m-%d-%Y",    # 03-06-2012
+        "%Y-%m-%d",    # 2012-03-06
+        "%d/%m/%Y",    # 06/03/2012 (if OCR outputs this)
+        "%d-%b-%Y",    # 06-Mar-2012
+        "%d %b %Y",    # 06 Mar 2012
+    ]
+
+    for fmt in fmts:
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.replace(tzinfo=timezone.utc).isoformat()
+        except ValueError:
+            continue
+
+    # If nothing matched, keep old behavior
+    return ""
+
 """
     Removes currency symbols and formatting from amount strings.
     Returns float or empty string if invalid.
 """  
-def clean_amount(value):
+def clean_amount(key,value):
+
     if not value:
         return ""
     try:
+        if key == "Quantity":
+            return int(
+            value.replace("$", "").replace(",", "").strip()
+        )
         return float(
             value.replace("$", "").replace(",", "").strip()
         )
