@@ -107,10 +107,12 @@ class TestYourFeature(unittest.TestCase):
         clean_db()
 
     # -------------------- SUCCESS --------------------
-    @patch("app.doc_client")
-    def test_endpoint_success_case(self, mock_doc_client):
+    @patch("app.get_doc_client")
+    def test_endpoint_success_case(self, mock_get_client):
         fake_response = build_fake_oci_response(doc_type_confidence=0.95, include_document_fields=True)
-        mock_doc_client.analyze_document.return_value = fake_response
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.analyze_document.return_value = build_fake_oci_response()
 
         response = self.client.post("/extract", files=self.files)
 

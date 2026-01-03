@@ -10,8 +10,18 @@ import time
 
 app = FastAPI()
 # Load OCI config from ~/.oci/config
-config = oci.config.from_file()
-doc_client = oci.ai_document.AIServiceDocumentClient(config)
+#config = oci.config.from_file()
+#doc_client = oci.ai_document.AIServiceDocumentClient(config)
+
+doc_client = None
+
+def get_doc_client():
+    global doc_client
+    if doc_client is None:
+        config = oci.config.from_file()
+        doc_client = oci.ai_document.AIServiceDocumentClient(config)
+    return doc_client
+
 
 """
     Receives an uploaded file and processes it for data extraction.
@@ -58,7 +68,8 @@ async def extract(file: UploadFile = File(...)):
     )
     try:
         start_time = time.time()   # זמן התחלה
-        response = doc_client.analyze_document(request)
+        client = get_doc_client()
+        response = client.analyze_document(request)        
         end_time = time.time()     # זמן סיום
         prediction_time = end_time - start_time
         print(f"Time taken: {prediction_time:.2f} seconds")
