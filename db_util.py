@@ -203,5 +203,20 @@ def getInvoiceById(invoice_id):
         "InvoiceTotal": row[7],
         "Items": items
     }
+def clean_db():
+    """
+    Cleans the database by removing all test data.
+    This function is used after each integration test
+    to ensure database isolation.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Delete child table first (because of FK relations)
+        cursor.execute("DELETE FROM items;")
+        cursor.execute("DELETE FROM invoices;")
+
+        conn.commit()
+
 
     
