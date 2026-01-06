@@ -5,7 +5,8 @@
 - **POST `/extract`**
   - Happy path: valid invoice file → returns extracted structured invoice JSON.
   - Validation: missing or invalid file input → returns an error response.
-  - Low-confidence or unsupported document type handling → returns 400.
+  - Low-confidence in less than 0.9 → returns 400.
+  - format file not pdf -unsupported document type handling -> returns 400.
   - FAILURE: OCI service unavailable → returns 503.
   - EDGE CASE: valid document with no extracted fields → returns 200 with empty data.
 
@@ -39,7 +40,7 @@
 - **Local**:
   - Tests are executed in a Python virtual environment using `pytest`.
 - **CI (GitHub Actions)**:
-  - Tests are executed automatically on Linux runners.
+  - Tests are executed automatically on ubento runners.
   - No OCI configuration or secrets are available in CI.
   - All external OCI calls are mocked.
   - Application import must not depend on `~/.oci/config`.

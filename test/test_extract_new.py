@@ -92,7 +92,7 @@ def build_fake_oci_response(doc_type_confidence=0.95, include_document_fields=Tr
     return fake_response
 
 
-class TestYourFeature(unittest.TestCase):
+class TestExtractNew(unittest.TestCase):
     """Integration tests for POST /extract (success + failures)"""
 
     def setUp(self):
@@ -112,7 +112,7 @@ class TestYourFeature(unittest.TestCase):
         fake_response = build_fake_oci_response(doc_type_confidence=0.95, include_document_fields=True)
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        mock_client.analyze_document.return_value = build_fake_oci_response()
+        mock_client.analyze_document.return_value = fake_response
 
         response = self.client.post("/extract", files=self.files)
 
