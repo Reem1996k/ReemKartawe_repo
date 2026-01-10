@@ -59,8 +59,6 @@ class TestFormatDateToIso(unittest.TestCase):
         self.assertTrue(out.endswith("+00:00"))
 
 
-
-
 class TestCleanAmount(unittest.TestCase):
 
     def test_empty_value_returns_empty_string(self):

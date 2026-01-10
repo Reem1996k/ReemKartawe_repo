@@ -2,6 +2,7 @@ import unittest
 from db_util import init_db, clean_db , save_inv_extraction
 from fastapi.testclient import TestClient
 from app import app
+#from mvc_model.myAppView import app
 
 class TestGetInvoiceById(unittest.TestCase):
 
@@ -27,7 +28,7 @@ class TestGetInvoiceById(unittest.TestCase):
         }
 
         result = {"data": SEED_DATA}
-        save_inv_extraction(result)
+        
 
     def test_invoice_found(self):
         # Act: call the endpoint with the seeded invoice id
